@@ -8,22 +8,39 @@ use {
     memo::accounts::Memo,
     solana_program_test::*,
     solana_sdk::{
-        instruction::AccountMeta, signature::Keypair, signer::Signer, transaction::Transaction,
+        hash::Hash, instruction::AccountMeta, signature::Keypair, signer::Signer,
+        transaction::Transaction,
     },
 };
 
-#[tokio::test]
-async fn test_unexpected_drain() {
-    // Program ID for the memo program
+struct ProgramTestSetup {
+    program_id: Pubkey,
+    banks_client: BanksClient,
+    payer: Keypair,
+    recent_blockhash: Hash,
+}
+
+async fn setup_program_test() -> ProgramTestSetup {
     let program_id = memo::ID;
-
-    // Create program test environment
     let program_test = ProgramTest::new("memo", program_id, anchor_processor!(memo));
-
-    // Start the test environment
     let (banks_client, payer, recent_blockhash) = program_test.start().await;
+    ProgramTestSetup {
+        program_id,
+        banks_client,
+        payer,
+        recent_blockhash,
+    }
+}
 
-    // Step 1: Call the memo program, nothing unexpected
+#[tokio::test]
+async fn test_memo() {
+    let ProgramTestSetup {
+        program_id,
+        banks_client,
+        payer,
+        recent_blockhash,
+    } = setup_program_test().await;
+
     let memo_text = "Hello, Solana!".to_string();
 
     let memo_accounts = Memo {};
@@ -42,9 +59,18 @@ async fn test_unexpected_drain() {
 
     // Send the transaction
     banks_client.process_transaction(tx).await.unwrap();
-    println!("Memo transaction processed successfully");
+}
 
-    // Step 2: Create IDL account resize it to be as big as possible and close into the attacker's account
+#[tokio::test]
+async fn test_unexpected_drain() {
+    let ProgramTestSetup {
+        program_id,
+        banks_client,
+        payer,
+        recent_blockhash,
+    } = setup_program_test().await;
+
+    // Create IDL account resize it to be as big as possible and close into the attacker's account
     let attacker = Keypair::new();
     let initial_attacker_balance = 0;
 
@@ -76,7 +102,7 @@ async fn test_unexpected_drain() {
     );
     ixs.push(close_account_ix);
 
-    let create_tx = Transaction::new_signed_with_payer(
+    let tx = Transaction::new_signed_with_payer(
         &ixs,
         Some(&payer.pubkey()),
         &[&payer],
@@ -84,7 +110,7 @@ async fn test_unexpected_drain() {
     );
 
     // Send the transaction to create IDL account
-    banks_client.process_transaction(create_tx).await.unwrap();
+    banks_client.process_transaction(tx).await.unwrap();
     println!("IDL account created successfully and closed");
 
     // Verify the attacker received the funds

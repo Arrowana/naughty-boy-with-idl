@@ -1,9 +1,9 @@
 
 Trusting a specific program with visibly no way to use user funds is not enough
 
-The hidden IDL feature can be used to drain SOL from the user by creating, resizing and closing the IDL account
+The IDL feature can be used to drain SOL from the user by creating, resizing and closing the IDL account
 
-This is dangerous for blanket whitelists to safe program while "blind" signing
+This is dangerous for blanket whitelists to safe programs while "blind" signing
 
 Nice anchor feature
 
@@ -12,4 +12,3 @@ Nice anchor feature
 ```bash
 cargo test -- --nocapture
 ```
-
